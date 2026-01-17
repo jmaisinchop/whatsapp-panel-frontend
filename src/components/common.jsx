@@ -1,41 +1,51 @@
-// src/components/common.jsx
 import React from 'react';
+import PropTypes from 'prop-types';
 
-export function Avatar({ name, size = 'md', color = '#0066FF' }) {
+export function Avatar({ name, size = 'md', className = '' }) {
   const initials = name ? name.charAt(0).toUpperCase() : '?';
   
-  const sizeStyles = {
-    sm: { width: '32px', height: '32px', fontSize: '14px' },
-    md: { width: '40px', height: '40px', fontSize: '16px' },
-    lg: { width: '48px', height: '48px', fontSize: '18px' }
+  const sizeClasses = {
+    sm: 'w-8 h-8 text-xs',
+    md: 'w-10 h-10 text-sm',
+    lg: 'w-12 h-12 text-base',
+    xl: 'w-16 h-16 text-xl'
   };
 
-  const style = {
-    ...sizeStyles[size],
-    backgroundColor: color,
-    color: 'white',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: '600',
-    flexShrink: 0
-  };
 
-  return <div style={style}>{initials}</div>;
-}
+  const colors = [
+    'bg-blue-600', 'bg-indigo-600', 'bg-violet-600', 'bg-emerald-600', 'bg-rose-600'
+  ];
+  const colorClass = colors[name ? name.length % colors.length : 0];
 
-export function StatusDot({ status }) {
-  const color = status === 'online' ? '#10B981' : '#EF4444'; // verde : rojo
   return (
-    <span
-      style={{
-        width: '10px',
-        height: '10px',
-        backgroundColor: color,
-        borderRadius: '50%',
-        display: 'inline-block'
-      }}
-    />
+    <div className={`
+      ${sizeClasses[size] || sizeClasses.md} 
+      ${className.includes('bg-') ? '' : colorClass}
+      ${className}
+      rounded-full flex items-center justify-center text-white font-bold shadow-sm flex-shrink-0
+    `}>
+      {initials}
+    </div>
   );
 }
+
+
+Avatar.propTypes = {
+  name: PropTypes.string,
+  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl']), 
+  className: PropTypes.string,
+};
+
+export function StatusDot({ status }) {
+  return (
+    <span className={`
+      w-2.5 h-2.5 rounded-full inline-block
+      ${status === 'online' ? 'bg-emerald-500' : 'bg-rose-500'}
+      ring-2 ring-white
+    `} />
+  );
+}
+
+StatusDot.propTypes = {
+  status: PropTypes.string,
+};

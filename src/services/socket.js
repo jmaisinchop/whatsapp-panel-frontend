@@ -33,12 +33,11 @@ export const SOCKET_EVENTS = {
 };
 
 class SocketService {
-  constructor() {
-    this.socket = null;
-    this.listeners = new Map();
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10;
-  }
+  // S7757: Campos declarados a nivel de clase
+  socket = null;
+  listeners = new Map();
+  reconnectAttempts = 0;
+  maxReconnectAttempts = 10;
 
   // Conectar al servidor
   connect(token) {

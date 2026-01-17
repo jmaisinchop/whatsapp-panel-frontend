@@ -51,7 +51,8 @@ class ApiService {
       if (response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        // S7764: Prefer `globalThis` over `window`.
+        globalThis.location.href = '/login';
         throw new Error('Sesión expirada');
       }
 

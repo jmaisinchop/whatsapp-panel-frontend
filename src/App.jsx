@@ -1,23 +1,15 @@
-// =====================================================
-// APP.JSX - Componente principal con rutas
-// =====================================================
-
 import { Routes, Route, Navigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { useAuth } from './context/AuthContext';
 import { ChatProvider } from './context/ChatContext';
 import { LoadingScreen } from './components/Loading';
-
-// Layout
 import Layout from './components/Layout';
-
-// Pages
 import LoginPage from './pages/Login';
 import DashboardPage from './pages/Dashboard';
 import ChatsPage from './pages/Chats';
 import UsersPage from './pages/Users';
 import SettingsPage from './pages/Settings';
 
-// Protected Route Component
 function ProtectedRoute({ children, roles = [] }) {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -29,7 +21,6 @@ function ProtectedRoute({ children, roles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Verificar roles si se especifican
   if (roles.length > 0 && !roles.includes(user?.role)) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -37,7 +28,11 @@ function ProtectedRoute({ children, roles = [] }) {
   return children;
 }
 
-// Admin Route Component
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+  roles: PropTypes.arrayOf(PropTypes.string),
+};
+
 function AdminRoute({ children }) {
   return (
     <ProtectedRoute roles={['admin']}>
@@ -46,13 +41,15 @@ function AdminRoute({ children }) {
   );
 }
 
+AdminRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
 function App() {
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected Routes */}
       <Route
         path="/"
         element={
@@ -63,14 +60,10 @@ function App() {
           </ProtectedRoute>
         }
       >
-        {/* Dashboard */}
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-
-        {/* Chats */}
         <Route path="chats" element={<ChatsPage />} />
 
-        {/* Users (Admin only) */}
         <Route
           path="users"
           element={
@@ -80,7 +73,6 @@ function App() {
           }
         />
 
-        {/* Settings (Admin only) */}
         <Route
           path="settings"
           element={
@@ -91,7 +83,6 @@ function App() {
         />
       </Route>
 
-      {/* 404 - Redirect to Dashboard */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

@@ -72,7 +72,8 @@ export function formatPhoneNumber(phone) {
   if (!phone) return '';
   
   // Limpiar caracteres no numéricos
-  const cleaned = phone.replace(/\D/g, '');
+  // S7781: Prefer `String#replaceAll()` over `String#replace()`.
+  const cleaned = phone.replaceAll(/\D/g, '');
   
   // Formatear según longitud
   if (cleaned.length === 10) {
@@ -118,7 +119,8 @@ export function stringToColor(str) {
   
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    // S7758: Prefer `String#codePointAt()` over `String#charCodeAt()`.
+    hash = str.codePointAt(i) + ((hash << 5) - hash);
   }
   
   const colors = [
@@ -153,7 +155,8 @@ export function formatFileSize(bytes) {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  // S7773: Prefer `Number.parseFloat` over `parseFloat`.
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 /**

@@ -1,22 +1,19 @@
-// =====================================================
-// SOCKET CONTEXT - Conexión WebSocket global
-// =====================================================
-
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { useAuth } from './AuthContext';
 import socketService, { SOCKET_EVENTS } from '../services/socket';
 
 const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
-  const { token, isAuthenticated, user } = useAuth();
+  const { token, isAuthenticated } = useAuth(); // S1481: Eliminado 'user' no usado
   
   const [isConnected, setIsConnected] = useState(false);
   const [connectedAgents, setConnectedAgents] = useState([]);
   const [whatsappStatus, setWhatsappStatus] = useState('disconnected');
   const [qrCode, setQrCode] = useState(null);
   
-  const cleanupRef = useRef([]);
+  // S1481: Eliminado 'cleanupRef' no usado
 
   // Conectar/desconectar según autenticación
   useEffect(() => {
@@ -83,7 +80,8 @@ export function SocketProvider({ children }) {
     socketService.emit(event, data);
   }, []);
 
-  const value = {
+  // S6481: useMemo para evitar re-renderizados innecesarios
+  const value = useMemo(() => ({
     isConnected,
     connectedAgents,
     whatsappStatus,
@@ -92,7 +90,7 @@ export function SocketProvider({ children }) {
     unsubscribe,
     emit,
     socket: socketService.getSocket(),
-  };
+  }), [isConnected, connectedAgents, whatsappStatus, qrCode, subscribe, unsubscribe, emit]);
 
   return (
     <SocketContext.Provider value={value}>
@@ -100,6 +98,11 @@ export function SocketProvider({ children }) {
     </SocketContext.Provider>
   );
 }
+
+// S6774: Validación de Props
+SocketProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 export function useSocket() {
   const context = useContext(SocketContext);
@@ -109,5 +112,6 @@ export function useSocket() {
   return context;
 }
 
-export { SOCKET_EVENTS };
+// S7763: Re-exportar usando la sintaxis correcta
+export { SOCKET_EVENTS } from '../services/socket';
 export default SocketContext;
