@@ -7,14 +7,15 @@ import { Spinner } from '../components/Loading';
 import Modal from '../components/Modal';
 import api from '../services/api';
 import {
-  Search, Paperclip, Send, MoreVertical,ChevronUp,
+  Search, Paperclip, Send, MoreVertical, ChevronUp,
   MessageSquare, Check, CheckCheck, FileText, ChevronLeft, StickyNote, X
 } from 'lucide-react';
 
 export default function ChatsPage() {
   const {
     chats, currentChat, loading, loadChat, setCurrentChat,
-    sendMessage, sendMedia, markAsRead, assignChat, releaseChat, createNote,messagesPagination,loadMoreMessages,loadingMessages,
+    sendMessage, sendMedia, markAsRead, assignChat, releaseChat, createNote,
+    messagesPagination, loadMoreMessages, loadingMessages,
   } = useChat();
 
   const { user } = useAuth();
@@ -40,14 +41,16 @@ export default function ChatsPage() {
   }, []);
 
   useEffect(() => {
-    if (currentChat?.messages) scrollToBottom();
-  }, [currentChat?.messages, scrollToBottom]);
+    if (currentChat?.messages && !loadingMessages && messagesPagination.page === 1) {
+      scrollToBottom();
+    }
+  }, [currentChat?.messages, scrollToBottom, loadingMessages, messagesPagination.page]);
 
   useEffect(() => {
     if (showAssignModal) {
       api.getAgentsList()
         .then(setAgents)
-        .catch(err => console.error('Error al cargar agentes:', err));
+        .catch(err => console.error(err));
     }
   }, [showAssignModal]);
 
@@ -297,27 +300,27 @@ export default function ChatsPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 z-10 relative custom-scrollbar">
-              {messagesPagination.hasPreviousPage && (
-                <div className="flex justify-center mb-4">
+              {currentChat?.messages && messagesPagination.hasNextPage && (
+                <div className="flex justify-center mb-4 pt-2">
                   <button
                     onClick={() => loadMoreMessages(currentChat.id, messagesPagination.page + 1)}
                     disabled={loadingMessages}
-                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-full transition-colors disabled:opacity-50"
                   >
                     {loadingMessages ? (
                       <>
-                        <Spinner size="sm" />
-                        <span>Cargando...</span>
+                        <Spinner size="sm" /> Cargando...
                       </>
                     ) : (
                       <>
-                        <ChevronUp size={16} />
-                        <span>Cargar mensajes anteriores ({messagesPagination.total - currentChat.messages?.length || 0} más)</span>
+                        <ChevronUp size={14} />
+                        Cargar mensajes anteriores ({messagesPagination.total - currentChat.messages?.length || 0} más)
                       </>
                     )}
                   </button>
                 </div>
               )}
+
               {currentChat.messages?.map((msg, index) => {
                 const isCustomer = msg.sender === 'CUSTOMER';
                 const isSystem = msg.sender === 'SYSTEM';

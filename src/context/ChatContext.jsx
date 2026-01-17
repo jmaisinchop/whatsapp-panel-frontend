@@ -1,4 +1,3 @@
-// src/context/ChatContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useSocket, SOCKET_EVENTS } from './SocketContext';
@@ -18,7 +17,6 @@ export function ChatProvider({ children }) {
     page: 1, limit: 50, total: 0, totalPages: 0,
   });
 
-  // NUEVO: Estado para paginacion de mensajes
   const [messagesPagination, setMessagesPagination] = useState({
     page: 1,
     limit: 50,
@@ -91,7 +89,7 @@ export function ChatProvider({ children }) {
         totalPages: response.meta?.totalPages || 0,
       });
     } catch (error) {
-      console.error('Error cargando chats:', error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -117,13 +115,10 @@ export function ChatProvider({ children }) {
     }
   }, []);
 
-  // NUEVO: Cargar chat sin mensajes (solo metadata)
   const loadChat = useCallback(async (chatId) => {
     try {
       setLoading(true);
       const chat = await api.getChat(chatId);
-      
-      // Cargar solo los ultimos 50 mensajes inicialmente
       const messagesResponse = await api.getChatMessages(chatId, 1, 50);
       
       setCurrentChat({
@@ -142,20 +137,20 @@ export function ChatProvider({ children }) {
 
       return chat;
     } catch (error) {
-      console.error('Error cargando chat:', error);
+      console.error(error);
       throw error;
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // NUEVO: Cargar mas mensajes (paginacion)
-  const loadMoreMessages = useCallback(async (chatId, page) => {
-    if (loadingMessages) return;
+  const loadMoreMessages = useCallback(async () => {
+    if (!currentChat || loadingMessages || !messagesPagination.hasNextPage) return;
 
     try {
       setLoadingMessages(true);
-      const messagesResponse = await api.getChatMessages(chatId, page, 50);
+      const nextPage = messagesPagination.page + 1;
+      const messagesResponse = await api.getChatMessages(currentChat.id, nextPage, 50);
       
       setCurrentChat(prev => ({
         ...prev,
@@ -171,17 +166,17 @@ export function ChatProvider({ children }) {
         hasPreviousPage: messagesResponse.meta.hasPreviousPage,
       });
     } catch (error) {
-      console.error('Error cargando más mensajes:', error);
+      console.error(error);
     } finally {
       setLoadingMessages(false);
     }
-  }, [loadingMessages]);
+  }, [currentChat, loadingMessages, messagesPagination]);
 
   const sendMessage = useCallback(async (chatId, content) => {
     try {
       return await api.sendMessage(chatId, content);
     } catch (error) {
-      console.error('Error enviando mensaje:', error);
+      console.error(error);
       throw error;
     }
   }, []);
@@ -190,7 +185,7 @@ export function ChatProvider({ children }) {
     try {
       return await api.sendMedia(chatId, file, caption);
     } catch (error) {
-      console.error('Error enviando archivo:', error);
+      console.error(error);
       throw error;
     }
   }, []);
@@ -202,7 +197,7 @@ export function ChatProvider({ children }) {
         c.id === chatId ? { ...c, unreadCount: 0 } : c
       ));
     } catch (error) {
-      console.error('Error marcando como leído:', error);
+      console.error(error);
     }
   }, []);
 
@@ -212,7 +207,7 @@ export function ChatProvider({ children }) {
       success('Chat asignado correctamente');
       return chat;
     } catch (error) {
-      console.error('Error asignando chat:', error);
+      console.error(error);
       throw error;
     }
   }, [success]);
@@ -223,7 +218,7 @@ export function ChatProvider({ children }) {
       success('Chat liberado');
       return chat;
     } catch (error) {
-      console.error('Error liberando chat:', error);
+      console.error(error);
       throw error;
     }
   }, [success]);
@@ -234,7 +229,7 @@ export function ChatProvider({ children }) {
       success('Chat desasignado');
       return chat;
     } catch (error) {
-      console.error('Error desasignando chat:', error);
+      console.error(error);
       throw error;
     }
   }, [success]);
@@ -243,7 +238,7 @@ export function ChatProvider({ children }) {
     try {
       return await api.createNote(chatId, content);
     } catch (error) {
-      console.error('Error creando nota:', error);
+      console.error(error);
       throw error;
     }
   }, []);
@@ -263,7 +258,6 @@ export function ChatProvider({ children }) {
     ];
 
     return () => {
-      // Correccion SonarLint: uso de optional chaining
       cleanups.forEach(cleanup => cleanup?.());
     };
   }, [
