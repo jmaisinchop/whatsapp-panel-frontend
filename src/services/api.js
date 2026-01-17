@@ -1,6 +1,7 @@
+// src/services/api.js - VERSIÓN CORREGIDA
 // =====================================================
 // API SERVICE - Comunicación con el Backend
-// Maneja todos los 32 endpoints del sistema
+// Maneja todos los 33 endpoints del sistema
 // =====================================================
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -51,7 +52,6 @@ class ApiService {
       if (response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // S7764: Prefer `globalThis` over `window`.
         globalThis.location.href = '/login';
         throw new Error('Sesión expirada');
       }
@@ -179,6 +179,10 @@ class ApiService {
     return this.get(`/chats?page=${page}&limit=${limit}`);
   }
 
+  getChatMessages(chatId, page = 1, limit = 50) {
+    return this.get(`/chats/${chatId}/messages?page=${page}&limit=${limit}`);
+  }
+
   getChat(chatId) {
     return this.get(`/chats/${chatId}`);
   }
@@ -261,6 +265,7 @@ class ApiService {
   // DASHBOARD ENDPOINTS (6)
   // =====================================================
 
+  // ✅ NUEVO: Endpoint que faltaba
   getSurveyAnalytics() {
     return this.get('/dashboard/survey-analytics');
   }

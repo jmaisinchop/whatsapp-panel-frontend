@@ -1,27 +1,30 @@
-// =====================================================
-// UTILS - Funciones de utilidad
-// =====================================================
-
+// src/utils/helpers.js
 import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
+// Correccion SonarLint: Se elimina la importacion no usada 'zonedTimeToUtc'
+import { utcToZonedTime } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 
-/**
- * Formatea una fecha para mostrar en chats
- */
+const TIMEZONE = 'America/Guayaquil';
+
+function toGuayaquilTime(date) {
+  const parsedDate = typeof date === 'string' ? parseISO(date) : date;
+  return utcToZonedTime(parsedDate, TIMEZONE);
+}
+
 export function formatChatDate(dateString) {
   if (!dateString) return '';
   
-  const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+  const date = toGuayaquilTime(dateString);
   
   if (isToday(date)) {
-    return format(date, 'HH:mm');
+    return format(date, 'HH:mm', { timeZone: TIMEZONE });
   }
   
   if (isYesterday(date)) {
     return 'Ayer';
   }
   
-  return format(date, 'dd/MM/yy');
+  return format(date, 'dd/MM/yy', { timeZone: TIMEZONE });
 }
 
 /**
@@ -30,17 +33,17 @@ export function formatChatDate(dateString) {
 export function formatMessageTime(dateString) {
   if (!dateString) return '';
   
-  const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+  const date = toGuayaquilTime(dateString);
   
   if (isToday(date)) {
-    return format(date, 'HH:mm');
+    return format(date, 'HH:mm', { timeZone: TIMEZONE });
   }
   
   if (isYesterday(date)) {
-    return 'Ayer ' + format(date, 'HH:mm');
+    return 'Ayer ' + format(date, 'HH:mm', { timeZone: TIMEZONE });
   }
   
-  return format(date, 'dd/MM HH:mm');
+  return format(date, 'dd/MM HH:mm', { timeZone: TIMEZONE });
 }
 
 /**
@@ -49,7 +52,7 @@ export function formatMessageTime(dateString) {
 export function formatRelativeTime(dateString) {
   if (!dateString) return '';
   
-  const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+  const date = toGuayaquilTime(dateString);
   
   return formatDistanceToNow(date, { addSuffix: true, locale: es });
 }
@@ -60,9 +63,9 @@ export function formatRelativeTime(dateString) {
 export function formatFullDate(dateString) {
   if (!dateString) return '';
   
-  const date = typeof dateString === 'string' ? parseISO(dateString) : dateString;
+  const date = toGuayaquilTime(dateString);
   
-  return format(date, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es });
+  return format(date, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es, timeZone: TIMEZONE });
 }
 
 /**
@@ -71,11 +74,8 @@ export function formatFullDate(dateString) {
 export function formatPhoneNumber(phone) {
   if (!phone) return '';
   
-  // Limpiar caracteres no numéricos
-  // S7781: Prefer `String#replaceAll()` over `String#replace()`.
   const cleaned = phone.replaceAll(/\D/g, '');
   
-  // Formatear según longitud
   if (cleaned.length === 10) {
     return cleaned.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
   }
@@ -119,7 +119,6 @@ export function stringToColor(str) {
   
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
-    // S7758: Prefer `String#codePointAt()` over `String#charCodeAt()`.
     hash = str.codePointAt(i) + ((hash << 5) - hash);
   }
   
@@ -155,7 +154,6 @@ export function formatFileSize(bytes) {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   
-  // S7773: Prefer `Number.parseFloat` over `parseFloat`.
   return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 

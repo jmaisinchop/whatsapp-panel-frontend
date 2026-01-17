@@ -6,17 +6,17 @@ import { useToast } from '../context/ToastContext';
 import { Spinner } from '../components/Loading';
 import Modal from '../components/Modal';
 import api from '../services/api';
-import { 
-  Search, Paperclip, Send, MoreVertical, 
+import {
+  Search, Paperclip, Send, MoreVertical,ChevronUp,
   MessageSquare, Check, CheckCheck, FileText, ChevronLeft, StickyNote, X
 } from 'lucide-react';
 
 export default function ChatsPage() {
   const {
     chats, currentChat, loading, loadChat, setCurrentChat,
-    sendMessage, sendMedia, markAsRead, assignChat, releaseChat, createNote,
+    sendMessage, sendMedia, markAsRead, assignChat, releaseChat, createNote,messagesPagination,loadMoreMessages,loadingMessages,
   } = useChat();
-  
+
   const { user } = useAuth();
   const { connectedAgents } = useSocket();
   const { success, error: showError } = useToast();
@@ -51,7 +51,7 @@ export default function ChatsPage() {
     }
   }, [showAssignModal]);
 
-  const filteredChats = chats.filter(chat => 
+  const filteredChats = chats.filter(chat =>
     chat.contactNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     chat.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -60,9 +60,9 @@ export default function ChatsPage() {
     try {
       await loadChat(chat.id);
       await markAsRead(chat.id);
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
-      showError('Error al cargar el chat'); 
+      showError('Error al cargar el chat');
     }
   };
 
@@ -79,11 +79,11 @@ export default function ChatsPage() {
         await sendMessage(currentChat.id, messageText.trim());
       }
       setMessageText('');
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
-      showError(err.message || 'Error al enviar'); 
-    } finally { 
-      setSending(false); 
+      showError(err.message || 'Error al enviar');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -92,20 +92,20 @@ export default function ChatsPage() {
       await assignChat(currentChat.id, agentId);
       setShowAssignModal(false);
       loadChat(currentChat.id);
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
-      showError(err.message || 'Error al asignar'); 
+      showError(err.message || 'Error al asignar');
     }
   };
 
   const handleRelease = async () => {
     if (!confirm('¿Seguro que deseas liberar este chat?')) return;
-    try { 
-      await releaseChat(currentChat.id); 
-      loadChat(currentChat.id); 
-    } catch (err) { 
+    try {
+      await releaseChat(currentChat.id);
+      loadChat(currentChat.id);
+    } catch (err) {
       console.error(err);
-      showError(err.message || 'Error al liberar'); 
+      showError(err.message || 'Error al liberar');
     }
   };
 
@@ -113,18 +113,18 @@ export default function ChatsPage() {
     if (!noteContent.trim()) return;
     try {
       await createNote(currentChat.id, noteContent.trim());
-      setNoteContent(''); 
-      setShowNoteModal(false); 
-      success('Nota creada'); 
+      setNoteContent('');
+      setShowNoteModal(false);
+      success('Nota creada');
       loadChat(currentChat.id);
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
-      showError('Error al crear nota'); 
+      showError('Error al crear nota');
     }
   };
 
   const formatTime = (date) => new Date(date).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-  
+
   const getStatusColor = (status) => {
     const colors = {
       'AUTO_RESPONDER': 'bg-violet-100 text-violet-700',
@@ -146,7 +146,7 @@ export default function ChatsPage() {
     const baseClass = "w-full text-left flex items-center gap-3 p-3.5 cursor-pointer border-b border-slate-50 transition-all hover:bg-slate-50 focus:outline-none focus:bg-slate-100";
     const activeClass = "bg-blue-50/80 border-l-4 border-l-blue-600 pl-[11px]";
     const inactiveClass = "border-l-4 border-l-transparent pl-[14px]";
-    
+
     return `${baseClass} ${isActive ? activeClass : inactiveClass}`;
   };
 
@@ -206,7 +206,7 @@ export default function ChatsPage() {
 
   const getMessageClasses = (isCustomer, isBot) => {
     const baseClasses = "max-w-[85%] sm:max-w-[70%] rounded-xl px-3 py-2 shadow-sm relative text-[13.5px] leading-snug";
-    
+
     if (isCustomer) {
       return `${baseClasses} bg-white text-slate-800 rounded-tl-none border border-slate-100`;
     }
@@ -218,7 +218,7 @@ export default function ChatsPage() {
 
   return (
     <div className="flex h-full bg-white relative overflow-hidden rounded-xl shadow-sm border border-slate-200">
-      
+
       <aside className={`
         w-full md:w-[360px] bg-white border-r border-slate-200 flex flex-col z-20 absolute md:static inset-0 transition-transform duration-300
         ${currentChat ? '-translate-x-full md:translate-x-0' : 'translate-x-0'}
@@ -252,8 +252,8 @@ export default function ChatsPage() {
         flex-1 flex flex-col bg-[#efeae2] relative z-10 transition-transform duration-300 w-full md:w-auto absolute md:static inset-0
         ${currentChat ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
       `}>
-        <div className="absolute inset-0 opacity-[0.4]" 
-             style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', backgroundRepeat: 'repeat' }}></div>
+        <div className="absolute inset-0 opacity-[0.4]"
+          style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")', backgroundRepeat: 'repeat' }}></div>
 
         {currentChat ? (
           <>
@@ -297,6 +297,27 @@ export default function ChatsPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 z-10 relative custom-scrollbar">
+              {messagesPagination.hasPreviousPage && (
+                <div className="flex justify-center mb-4">
+                  <button
+                    onClick={() => loadMoreMessages(currentChat.id, messagesPagination.page + 1)}
+                    disabled={loadingMessages}
+                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loadingMessages ? (
+                      <>
+                        <Spinner size="sm" />
+                        <span>Cargando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp size={16} />
+                        <span>Cargar mensajes anteriores ({messagesPagination.total - currentChat.messages?.length || 0} más)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
               {currentChat.messages?.map((msg, index) => {
                 const isCustomer = msg.sender === 'CUSTOMER';
                 const isSystem = msg.sender === 'SYSTEM';
@@ -324,13 +345,13 @@ export default function ChatsPage() {
                       {msg.mediaUrl && (
                         <div className="mb-2 mt-1 -mx-1">
                           {msg.mimeType?.startsWith('image/') ? (
-                            <img 
-                              src={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`} 
-                              alt="Media" 
+                            <img
+                              src={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`}
+                              alt="Media"
                               className="rounded-lg max-h-64 object-cover cursor-pointer hover:brightness-95 transition-all shadow-sm"
                             />
                           ) : (
-                            <a 
+                            <a
                               href={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`}
                               target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-3 p-3 rounded-lg bg-black/5 hover:bg-black/10 transition-colors"
@@ -362,55 +383,55 @@ export default function ChatsPage() {
             <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-200 z-20 relative">
               {selectedFile && (
                 <div className="absolute bottom-full left-0 right-0 bg-slate-50/95 backdrop-blur border-t border-slate-200 p-3 px-4 flex items-center justify-between animate-in slide-in-from-bottom-2">
-                   <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Paperclip size={20} className="text-blue-600" />
-                     </div>
-                     <div>
-                        <p className="text-xs font-bold text-slate-700">Archivo seleccionado</p>
-                        <p className="text-xs text-slate-500 truncate max-w-[200px]">{selectedFile.name}</p>
-                     </div>
-                   </div>
-                   <button type="button" onClick={() => setSelectedFile(null)} className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-500 rounded-full transition-colors">
-                     <X size={18} />
-                   </button>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Paperclip size={20} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">Archivo seleccionado</p>
+                      <p className="text-xs text-slate-500 truncate max-w-[200px]">{selectedFile.name}</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setSelectedFile(null)} className="p-1 hover:bg-rose-100 text-slate-400 hover:text-rose-500 rounded-full transition-colors">
+                    <X size={18} />
+                  </button>
                 </div>
               )}
 
               <div className="flex items-end gap-2 max-w-4xl mx-auto">
-                 <input 
-                   type="file" 
-                   hidden 
-                   ref={fileInputRef} 
-                   onChange={(e) => setSelectedFile(e.target.files[0])} 
-                 />
-                 <button 
-                   type="button" 
-                   onClick={() => fileInputRef.current?.click()}
-                   disabled={!isAssignedToMe || sending}
-                   className="mb-1 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 rounded-full transition-colors disabled:opacity-50"
-                 >
-                   <Paperclip size={22} />
-                 </button>
+                <input
+                  type="file"
+                  hidden
+                  ref={fileInputRef}
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!isAssignedToMe || sending}
+                  className="mb-1 p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 rounded-full transition-colors disabled:opacity-50"
+                >
+                  <Paperclip size={22} />
+                </button>
 
-                 <div className="flex-1 bg-white border border-slate-300 rounded-2xl px-4 py-2 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all">
-                    <input
-                      type="text"
-                      placeholder={isAssignedToMe ? "Escribe un mensaje..." : "Debes tomar este chat para responder"}
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      disabled={!isAssignedToMe || sending}
-                      className="w-full bg-transparent border-none focus:ring-0 p-1 text-sm placeholder:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                 </div>
+                <div className="flex-1 bg-white border border-slate-300 rounded-2xl px-4 py-2 focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all">
+                  <input
+                    type="text"
+                    placeholder={isAssignedToMe ? "Escribe un mensaje..." : "Debes tomar este chat para responder"}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    disabled={!isAssignedToMe || sending}
+                    className="w-full bg-transparent border-none focus:ring-0 p-1 text-sm placeholder:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
 
-                 <button 
-                   type="submit"
-                   disabled={!isAssignedToMe || sending || (!messageText.trim() && !selectedFile)}
-                   className="mb-1 p-2.5 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95 flex items-center justify-center"
-                 >
-                   {sending ? <Spinner size="sm" className="border-white" /> : <Send size={20} className="ml-0.5" />}
-                 </button>
+                <button
+                  type="submit"
+                  disabled={!isAssignedToMe || sending || (!messageText.trim() && !selectedFile)}
+                  className="mb-1 p-2.5 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all shadow-sm active:scale-95 flex items-center justify-center"
+                >
+                  {sending ? <Spinner size="sm" className="border-white" /> : <Send size={20} className="ml-0.5" />}
+                </button>
               </div>
             </form>
           </>
@@ -433,7 +454,7 @@ export default function ChatsPage() {
             </button>
             <h3 className="font-semibold text-slate-700 text-sm">Información del contacto</h3>
           </div>
-          
+
           <div className="p-6 text-center border-b border-slate-50">
             <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl shadow-inner text-slate-400">
               {currentChat.customerName?.[0] || '?'}
@@ -444,43 +465,43 @@ export default function ChatsPage() {
 
           <div className="p-5 space-y-5">
             <div className="space-y-2">
-               <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado Actual</h4>
-               <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold w-full text-center ${getStatusColor(currentChat.status)}`}>
-                 {currentChat.status}
-               </span>
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado Actual</h4>
+              <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold w-full text-center ${getStatusColor(currentChat.status)}`}>
+                {currentChat.status}
+              </span>
             </div>
 
             <div className="space-y-2">
-               <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Agente Asignado</h4>
-               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                 <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
-                    {currentChat.assignedTo?.firstName?.[0] || '?'}
-                 </div>
-                 <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-slate-700">
-                      {currentChat.assignedTo ? `${currentChat.assignedTo.firstName} ${currentChat.assignedTo.lastName}` : 'Sin asignar'}
-                    </span>
-                    <span className="text-[10px] text-slate-400">{currentChat.assignedTo?.email || 'Pendiente'}</span>
-                 </div>
-               </div>
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Agente Asignado</h4>
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                  {currentChat.assignedTo?.firstName?.[0] || '?'}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {currentChat.assignedTo ? `${currentChat.assignedTo.firstName} ${currentChat.assignedTo.lastName}` : 'Sin asignar'}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{currentChat.assignedTo?.email || 'Pendiente'}</span>
+                </div>
+              </div>
             </div>
 
             {currentChat.notes?.length > 0 && (
               <div className="pt-2">
                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                   <StickyNote size={12} /> Notas Internas
+                  <StickyNote size={12} /> Notas Internas
                 </h4>
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                   {currentChat.notes.map((note, i) => (
                     <div key={note.id || i} className="bg-amber-50 border border-amber-100/50 p-3 rounded-xl relative group">
                       <p className="text-xs text-slate-700 mb-1.5 leading-relaxed">{note.content}</p>
                       <div className="flex justify-between items-center border-t border-amber-100/50 pt-1.5">
-                         <span className="text-[10px] text-amber-600 font-medium truncate max-w-[100px]">
-                            {note.author?.firstName || 'Agente'}
-                         </span>
-                         <span className="text-[9px] text-slate-400">
-                            {new Date(note.createdAt).toLocaleDateString()}
-                         </span>
+                        <span className="text-[10px] text-amber-600 font-medium truncate max-w-[100px]">
+                          {note.author?.firstName || 'Agente'}
+                        </span>
+                        <span className="text-[9px] text-slate-400">
+                          {new Date(note.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -505,15 +526,15 @@ export default function ChatsPage() {
             autoFocus
           />
           <Modal.Footer>
-             <button onClick={() => setShowNoteModal(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
-             <button onClick={handleCreateNote} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">Guardar Nota</button>
+            <button onClick={() => setShowNoteModal(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
+            <button onClick={handleCreateNote} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">Guardar Nota</button>
           </Modal.Footer>
         </div>
       </Modal>
 
       <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Asignar Chat" size="sm">
         <div className="mb-3 px-1">
-           <input type="text" placeholder="Filtrar agentes..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
+          <input type="text" placeholder="Filtrar agentes..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500" />
         </div>
         <div className="max-h-64 overflow-y-auto space-y-1 custom-scrollbar -mx-2 px-2">
           {agents.map(agent => (
@@ -531,8 +552,8 @@ export default function ChatsPage() {
               </div>
               {connectedAgents.some(a => a.id === agent.id) && (
                 <div className="flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                   <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                   <span className="text-[10px] font-bold text-emerald-600">Online</span>
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <span className="text-[10px] font-bold text-emerald-600">Online</span>
                 </div>
               )}
             </button>

@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
 import { useSocket, SOCKET_EVENTS } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
@@ -5,7 +6,7 @@ import api from '../services/api';
 import { Spinner } from '../components/Loading';
 import {
   BarChart3, TrendingUp, Users, ThumbsUp,
-  RefreshCw, Star, Activity
+  RefreshCw, Star, Activity, MessageSquare
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -16,15 +17,18 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [realtimeStats, setRealtimeStats] = useState(null);
   const [trend, setTrend] = useState(null);
+  const [analytics, setAnalytics] = useState(null); 
 
   const loadData = async () => {
     try {
-      const [statsData, trendData] = await Promise.all([
+      const [statsData, trendData, analyticsData] = await Promise.all([
         api.getRealtimeStats().catch(() => null),
         api.getSurveyTrend(7).catch(() => null),
+        api.getSurveyAnalytics().catch(() => null), 
       ]);
       setRealtimeStats(statsData);
       setTrend(trendData);
+      setAnalytics(analyticsData); 
     } catch (err) { 
       console.error(err);
       showError('Error al cargar estadísticas'); 
@@ -45,6 +49,13 @@ export default function DashboardPage() {
     const unsub = subscribe(SOCKET_EVENTS.DASHBOARD_SURVEY_UPDATE, loadData);
     return () => unsub?.();
   }, [subscribe]);
+
+  // Correccion SonarLint: Funcion auxiliar para evitar ternarios anidados
+  const getRatingStyles = (rating) => {
+    if (rating === 'EXCELENTE') return 'bg-emerald-100 text-emerald-700';
+    if (rating === 'REGULAR') return 'bg-amber-100 text-amber-700';
+    return 'bg-rose-100 text-rose-700';
+  };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Spinner size="lg" /></div>;
 
@@ -146,15 +157,15 @@ export default function DashboardPage() {
            </div>
 
            <div className="flex-1 flex items-end justify-between gap-4 pt-4 px-2 min-h-[240px] border-b border-dashed border-slate-200 relative">
-              {/* Background grid lines effect */}
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30">
+             {/* Background grid lines effect */}
+             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30">
                  <div className="border-t border-slate-100 w-full h-px"></div>
                  <div className="border-t border-slate-100 w-full h-px"></div>
                  <div className="border-t border-slate-100 w-full h-px"></div>
                  <div className="border-t border-slate-100 w-full h-px"></div>
-              </div>
+             </div>
 
-              {trend?.data?.map((day) => {
+             {trend?.data?.map((day) => {
                  const exc = Number(day.EXCELENTE || 0);
                  const reg = Number(day.REGULAR || 0);
                  const bad = Number(day.MALA || 0);
@@ -179,10 +190,48 @@ export default function DashboardPage() {
                        </span>
                     </div>
                  )
-              })}
+             })}
            </div>
         </div>
       </div>
+
+      {/* NUEVA SECCION: Comentarios Recientes (si analytics esta disponible) */}
+      {analytics?.comments && analytics.comments.length > 0 && (
+        <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="mb-6">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2.5">
+              <div className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                <MessageSquare size={18} />
+              </div>
+              Comentarios Recientes
+            </h2>
+            <p className="text-xs text-slate-400 mt-1 ml-11">Últimos comentarios de clientes</p>
+          </div>
+
+          <div className="space-y-4">
+            {analytics.comments.map((comment, idx) => (
+              <div key={comment.id || idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    {/* Correccion aplicada aqui: uso de funcion helper */}
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${getRatingStyles(comment.rating)}`}>
+                      {comment.rating}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {new Date(comment.createdAt).toLocaleDateString('es')}
+                  </span>
+                </div>
+                {comment.comment && (
+                  <p className="text-sm text-slate-700 leading-relaxed italic">
+                    "{comment.comment}"
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
     </div>
   );

@@ -1,3 +1,4 @@
+// src/context/ChatContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useSocket, SOCKET_EVENTS } from './SocketContext';
@@ -16,6 +17,17 @@ export function ChatProvider({ children }) {
   const [pagination, setPagination] = useState({
     page: 1, limit: 50, total: 0, totalPages: 0,
   });
+
+  // NUEVO: Estado para paginacion de mensajes
+  const [messagesPagination, setMessagesPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const currentChatRef = useRef(currentChat);
   
@@ -59,7 +71,11 @@ export function ChatProvider({ children }) {
   const handleChatUpdate = useCallback((chat) => {
     setChats(prev => prev.map(c => c.id === chat.id ? chat : c));
     if (currentChatRef.current?.id === chat.id) {
-      setCurrentChat(chat);
+      setCurrentChat(prevChat => ({
+        ...prevChat,
+        ...chat,
+        messages: prevChat?.messages || [],
+      }));
     }
   }, []);
 
@@ -101,11 +117,29 @@ export function ChatProvider({ children }) {
     }
   }, []);
 
+  // NUEVO: Cargar chat sin mensajes (solo metadata)
   const loadChat = useCallback(async (chatId) => {
     try {
       setLoading(true);
       const chat = await api.getChat(chatId);
-      setCurrentChat(chat);
+      
+      // Cargar solo los ultimos 50 mensajes inicialmente
+      const messagesResponse = await api.getChatMessages(chatId, 1, 50);
+      
+      setCurrentChat({
+        ...chat,
+        messages: messagesResponse.data || [],
+      });
+
+      setMessagesPagination({
+        page: messagesResponse.meta.page,
+        limit: messagesResponse.meta.limit,
+        total: messagesResponse.meta.total,
+        totalPages: messagesResponse.meta.totalPages,
+        hasNextPage: messagesResponse.meta.hasNextPage,
+        hasPreviousPage: messagesResponse.meta.hasPreviousPage,
+      });
+
       return chat;
     } catch (error) {
       console.error('Error cargando chat:', error);
@@ -114,6 +148,34 @@ export function ChatProvider({ children }) {
       setLoading(false);
     }
   }, []);
+
+  // NUEVO: Cargar mas mensajes (paginacion)
+  const loadMoreMessages = useCallback(async (chatId, page) => {
+    if (loadingMessages) return;
+
+    try {
+      setLoadingMessages(true);
+      const messagesResponse = await api.getChatMessages(chatId, page, 50);
+      
+      setCurrentChat(prev => ({
+        ...prev,
+        messages: [...messagesResponse.data, ...(prev?.messages || [])],
+      }));
+
+      setMessagesPagination({
+        page: messagesResponse.meta.page,
+        limit: messagesResponse.meta.limit,
+        total: messagesResponse.meta.total,
+        totalPages: messagesResponse.meta.totalPages,
+        hasNextPage: messagesResponse.meta.hasNextPage,
+        hasPreviousPage: messagesResponse.meta.hasPreviousPage,
+      });
+    } catch (error) {
+      console.error('Error cargando más mensajes:', error);
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, [loadingMessages]);
 
   const sendMessage = useCallback(async (chatId, content) => {
     try {
@@ -201,7 +263,8 @@ export function ChatProvider({ children }) {
     ];
 
     return () => {
-      cleanups.forEach(cleanup => cleanup && cleanup());
+      // Correccion SonarLint: uso de optional chaining
+      cleanups.forEach(cleanup => cleanup?.());
     };
   }, [
     isConnected, subscribe, 
@@ -220,9 +283,12 @@ export function ChatProvider({ children }) {
     currentChat,
     loading,
     pagination,
+    messagesPagination,
+    loadingMessages,
     setCurrentChat,
     loadChats: loadChatsCallback,
     loadChat,
+    loadMoreMessages,
     sendMessage,
     sendMedia,
     markAsRead,
@@ -231,8 +297,8 @@ export function ChatProvider({ children }) {
     unassignChat,
     createNote,
   }), [
-    chats, currentChat, loading, pagination,
-    loadChatsCallback, loadChat, sendMessage, sendMedia, markAsRead,
+    chats, currentChat, loading, pagination, messagesPagination, loadingMessages,
+    loadChatsCallback, loadChat, loadMoreMessages, sendMessage, sendMedia, markAsRead,
     assignChat, releaseChat, unassignChat, createNote
   ]);
 
