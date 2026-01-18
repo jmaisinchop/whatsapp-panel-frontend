@@ -1,8 +1,4 @@
-// src/services/api.js - VERSIÓN CORREGIDA
-// =====================================================
-// API SERVICE - Comunicación con el Backend
-// Maneja todos los 33 endpoints del sistema
-// =====================================================
+// src/services/api.js - VERSIÓN COMPLETA CORREGIDA
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -11,12 +7,10 @@ class ApiService {
     this.baseUrl = API_URL;
   }
 
-  // Obtener token del localStorage
   getToken() {
     return localStorage.getItem('token');
   }
 
-  // Headers por defecto
   getHeaders(isFormData = false) {
     const headers = {};
 
@@ -32,7 +26,6 @@ class ApiService {
     return headers;
   }
 
-  // Método base para peticiones
   async request(endpoint, options = {}) {
     const { isFormData = false, ...fetchOptions } = options;
 
@@ -48,7 +41,6 @@ class ApiService {
         },
       });
 
-      // Token expirado o inválido
       if (response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -69,7 +61,6 @@ class ApiService {
     }
   }
 
-  // Métodos HTTP básicos
   get(endpoint) {
     return this.request(endpoint, { method: 'GET' });
   }
@@ -92,7 +83,6 @@ class ApiService {
     return this.request(endpoint, { method: 'DELETE' });
   }
 
-  // Upload de archivos
   async upload(endpoint, formData) {
     const token = this.getToken();
 
@@ -241,6 +231,7 @@ class ApiService {
     return this.upload('/admin/profile-picture', formData);
   }
 
+  // ✅ AGREGADO
   updateBotStatus(status) {
     return this.patch('/admin/bot-status', { status });
   }
@@ -265,7 +256,6 @@ class ApiService {
   // DASHBOARD ENDPOINTS (6)
   // =====================================================
 
-  // ✅ NUEVO: Endpoint que faltaba
   getSurveyAnalytics() {
     return this.get('/dashboard/survey-analytics');
   }
@@ -286,11 +276,11 @@ class ApiService {
     return this.post('/dashboard/cache/invalidate', {});
   }
 
+  // ✅ AGREGADO
   clearCache() {
     return this.post('/dashboard/cache/clear', {});
   }
 }
 
-// Exportar instancia única
 export const api = new ApiService();
 export default api;

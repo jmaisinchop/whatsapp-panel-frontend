@@ -1,3 +1,5 @@
+// src/context/ChatContext.jsx - VERSIÓN LIMPIA
+
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useSocket, SOCKET_EVENTS } from './SocketContext';
@@ -111,6 +113,20 @@ export function ChatProvider({ children }) {
       setCurrentChat(prev => ({
         ...prev,
         notes: [...(prev?.notes ?? []), note],
+      }));
+    }
+  }, []);
+
+  const handleFinalizedChat = useCallback(({ chatId }) => {
+    setChats(prev => prev.map(c => 
+      c.id === chatId ? { ...c, status: 'CLOSED', assignedTo: null } : c
+    ));
+    
+    if (currentChatRef.current?.id === chatId) {
+      setCurrentChat(prev => ({
+        ...prev,
+        status: 'CLOSED',
+        assignedTo: null,
       }));
     }
   }, []);
@@ -252,7 +268,7 @@ export function ChatProvider({ children }) {
       subscribe(SOCKET_EVENTS.ASSIGNED_CHAT, handleChatUpdate),
       subscribe(SOCKET_EVENTS.ASSIGNMENT_NOTIFICATION, handleAssignmentNotification),
       subscribe(SOCKET_EVENTS.RELEASED_CHAT, handleChatUpdate),
-      subscribe(SOCKET_EVENTS.FINALIZED_CHAT, handleChatUpdate),
+      subscribe(SOCKET_EVENTS.FINALIZED_CHAT, handleFinalizedChat),
       subscribe(SOCKET_EVENTS.MESSAGES_READ, handleMessagesRead),
       subscribe(SOCKET_EVENTS.NEW_INTERNAL_NOTE, handleNewInternalNote),
     ];
@@ -263,7 +279,8 @@ export function ChatProvider({ children }) {
   }, [
     isConnected, subscribe, 
     handleNewMessage, handleNewChat, handleChatUpdate, 
-    handleAssignmentNotification, handleMessagesRead, handleNewInternalNote
+    handleAssignmentNotification, handleMessagesRead, 
+    handleNewInternalNote, handleFinalizedChat
   ]);
 
   useEffect(() => {

@@ -1,3 +1,5 @@
+// src/pages/Settings.jsx - VERSIÓN FINAL SIN ERRORES
+
 import { useState, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
@@ -6,8 +8,7 @@ import { Spinner } from '../components/Loading';
 import { Avatar } from '../components/common';
 import {
   Smartphone, QrCode, RefreshCw, LogOut, CheckCircle, XCircle,
-  WifiOff, Camera, Bot, Users, Database, Activity,
-  ShieldCheck, Clock, HardDrive
+  WifiOff, Camera, Bot, Users, Database, ShieldCheck, HardDrive, Edit2, Save, X as XIcon
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -16,18 +17,17 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [botProfile, setBotProfile] = useState(null);
-  const [health, setHealth] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [savingStatus, setSavingStatus] = useState(false);
 
   const loadData = async () => {
     try {
-      const [profileData, healthData] = await Promise.all([
-        api.getBotProfile().catch(() => null),
-        api.getWhatsAppHealth().catch(() => null),
-      ]);
+      const profileData = await api.getBotProfile().catch(() => null);
       setBotProfile(profileData);
-      setHealth(healthData);
     } catch (err) {
       console.error('Error cargando configuración:', err);
     } finally {
@@ -37,8 +37,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadData();
-    const unsubStatus = subscribe('admin:status', (data) => {
-      setHealth(prev => ({ ...prev, status: data.status }));
+    const unsubStatus = subscribe('admin:status', () => {
+      // Estado actualizado via socket
     });
     return () => unsubStatus?.();
   }, [subscribe]);
@@ -79,10 +79,29 @@ export default function SettingsPage() {
     }
   };
 
-  const handleInvalidateCache = async () => {
+  const handleSaveStatus = async () => {
+    if (!newStatus.trim()) {
+      showError('El status no puede estar vacío');
+      return;
+    }
+    setSavingStatus(true);
     try {
-      await api.invalidateCache();
-      success('Caché del sistema limpiado');
+      await api.updateBotStatus(newStatus.trim());
+      success('Status actualizado correctamente');
+      setEditingStatus(false);
+      loadData();
+    } catch (err) {
+      showError(err.message || 'Error al actualizar status');
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    if (!confirm('¿Limpiar toda la caché del sistema?')) return;
+    try {
+      await api.clearCache();
+      success('Caché limpiado correctamente');
     } catch (err) {
       showError(err.message || 'Error al limpiar caché');
     }
@@ -111,24 +130,6 @@ export default function SettingsPage() {
               Kika está conectada y procesando mensajes correctamente.
             </p>
           </div>
-          
-          {health && (
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">Uptime</span>
-                <div className="flex items-center justify-center gap-2 text-slate-700 font-mono font-medium">
-                  <Clock size={14} /> {health.uptime || '00:00:00'}
-                </div>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">Última Actividad</span>
-                <div className="flex items-center justify-center gap-2 text-slate-700 font-mono font-medium">
-                  <Activity size={14} /> 
-                  {health.lastActivity ? new Date(health.lastActivity).toLocaleTimeString() : 'N/A'}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       );
     }
@@ -185,7 +186,6 @@ export default function SettingsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* 1. WHATSAPP CONNECTION CARD */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -215,10 +215,8 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* COLUMNA DERECHA */}
           <div className="space-y-6">
             
-            {/* 2. BOT PROFILE CARD */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                 <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide flex items-center gap-2">
@@ -243,22 +241,52 @@ export default function SettingsPage() {
                 </div>
                 
                 <h4 className="text-lg font-bold text-slate-800">{botProfile?.name || 'Kika Bot'}</h4>
-                <p className="text-slate-500 text-sm font-mono mb-6">{botProfile?.number || 'Sin número'}</p>
+                <p className="text-slate-500 text-sm font-mono mb-4">{botProfile?.number || 'Sin número'}</p>
 
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
-                    <span className="block text-2xl font-bold text-blue-700">{botProfile?.totalChats || 0}</span>
-                    <span className="text-[10px] font-bold text-blue-400 uppercase">Chats Totales</span>
-                  </div>
-                  <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                    <span className="block text-2xl font-bold text-emerald-700">{botProfile?.activeChats || 0}</span>
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase">Activos Ahora</span>
-                  </div>
+                <div className="w-full">
+                  {editingStatus ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={newStatus}
+                        onChange={(e) => setNewStatus(e.target.value)}
+                        placeholder="Nuevo status..."
+                        maxLength={25}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSaveStatus}
+                          disabled={savingStatus}
+                          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                        >
+                          {savingStatus ? <Spinner size="sm" className="border-white" /> : <Save size={14} />}
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => setEditingStatus(false)}
+                          className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 text-sm font-medium"
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setNewStatus('');
+                        setEditingStatus(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 text-sm font-medium border border-slate-200"
+                    >
+                      <Edit2 size={14} />
+                      Cambiar Status/Bio
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* 3. CONNECTED AGENTS CARD */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                 <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide flex items-center gap-2">
@@ -291,7 +319,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* 4. SYSTEM ACTIONS CARD */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                  <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wide flex items-center gap-2">
@@ -304,7 +331,7 @@ export default function SettingsPage() {
                      <span className="font-mono font-medium text-slate-700">v1.0.0 (Prod)</span>
                   </div>
                   <button 
-                    onClick={handleInvalidateCache}
+                    onClick={handleClearCache}
                     className="w-full flex items-center justify-center gap-2 p-2.5 border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 rounded-xl transition-all text-sm font-medium"
                   >
                      <HardDrive size={16} /> Limpiar Caché del Servidor

@@ -1,3 +1,5 @@
+// src/pages/Users.jsx - VERSIÓN LIMPIA
+
 import { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -13,6 +15,7 @@ export default function UsersPage() {
   const { success, error: showError } = useToast();
   
   const [users, setUsers] = useState([]);
+  const [inactiveUsers, setInactiveUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -27,7 +30,6 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const response = await api.getUsers();
-      
       let userList = [];
       if (Array.isArray(response)) {
         userList = response;
@@ -36,8 +38,7 @@ export default function UsersPage() {
       } else if (response.users && Array.isArray(response.users)) {
         userList = response.users;
       }
-      
-      setUsers(userList);
+      setUsers(userList.filter(u => !u.deletedAt));
     } catch (err) { 
       console.error(err);
       showError('Error al cargar usuarios'); 
@@ -46,7 +47,25 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  const loadInactiveUsers = async () => {
+    try {
+      const response = await api.getDeactivatedUsers();
+      setInactiveUsers(Array.isArray(response) ? response : []);
+    } catch (err) {
+      console.error(err);
+      showError('Error al cargar usuarios inactivos');
+    }
+  };
+
+  useEffect(() => { 
+    loadUsers(); 
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'inactive') {
+      loadInactiveUsers();
+    }
+  }, [activeTab]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,6 +104,7 @@ export default function UsersPage() {
     try {
       await api.restoreUser(user.id);
       success('Usuario reactivado');
+      loadInactiveUsers();
       loadUsers();
     } catch (err) { 
       console.error(err);
@@ -150,18 +170,21 @@ export default function UsersPage() {
     );
   };
 
-  const searchedUsers = users.filter(u => 
+  const activeUsersList = users.filter(u => 
     u.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const activeUsersList = searchedUsers.filter(u => !u.deletedAt);
-  const inactiveUsersList = searchedUsers.filter(u => u.deletedAt);
+  const inactiveUsersList = inactiveUsers.filter(u =>
+    u.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const displayUsers = activeTab === 'active' ? activeUsersList : inactiveUsersList;
   const isCreating = !editingUser;
 
   const renderTableBody = () => {
-    if (loading) {
+    if (loading && activeTab === 'active') {
       return (
         <tr>
           <td colSpan="5" className="p-12 text-center">

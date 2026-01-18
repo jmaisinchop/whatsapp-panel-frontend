@@ -1,9 +1,11 @@
-// src/pages/Dashboard.jsx
+// src/pages/Dashboard.jsx - VERSIÓN LIMPIA
+
 import { useState, useEffect } from 'react';
 import { useSocket, SOCKET_EVENTS } from '../context/SocketContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { Spinner } from '../components/Loading';
+import Modal from '../components/Modal';
 import {
   BarChart3, TrendingUp, Users, ThumbsUp,
   RefreshCw, Star, Activity, MessageSquare
@@ -17,18 +19,23 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [realtimeStats, setRealtimeStats] = useState(null);
   const [trend, setTrend] = useState(null);
-  const [analytics, setAnalytics] = useState(null); 
+  const [analytics, setAnalytics] = useState(null);
+  
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(null);
+  const [ratingComments, setRatingComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   const loadData = async () => {
     try {
       const [statsData, trendData, analyticsData] = await Promise.all([
         api.getRealtimeStats().catch(() => null),
         api.getSurveyTrend(7).catch(() => null),
-        api.getSurveyAnalytics().catch(() => null), 
+        api.getSurveyAnalytics().catch(() => null),
       ]);
       setRealtimeStats(statsData);
       setTrend(trendData);
-      setAnalytics(analyticsData); 
+      setAnalytics(analyticsData);
     } catch (err) { 
       console.error(err);
       showError('Error al cargar estadísticas'); 
@@ -43,6 +50,23 @@ export default function DashboardPage() {
     setRefreshing(false);
   };
 
+  const handleViewComments = async (rating) => {
+    setSelectedRating(rating);
+    setShowCommentsModal(true);
+    setLoadingComments(true);
+    
+    try {
+      const comments = await api.getCommentsByRating(rating, 50);
+      setRatingComments(comments);
+    } catch (err) {
+      console.error(err);
+      showError('Error al cargar comentarios');
+      setRatingComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
   useEffect(() => { loadData(); }, []);
   
   useEffect(() => {
@@ -50,11 +74,65 @@ export default function DashboardPage() {
     return () => unsub?.();
   }, [subscribe]);
 
-  // Correccion SonarLint: Funcion auxiliar para evitar ternarios anidados
   const getRatingStyles = (rating) => {
     if (rating === 'EXCELENTE') return 'bg-emerald-100 text-emerald-700';
     if (rating === 'REGULAR') return 'bg-amber-100 text-amber-700';
     return 'bg-rose-100 text-rose-700';
+  };
+
+  const getRatingLabel = (rating) => {
+    if (rating === 'EXCELENTE') return 'Excelente';
+    if (rating === 'REGULAR') return 'Regular';
+    return 'Mala';
+  };
+
+  const renderModalContent = () => {
+    if (loadingComments) {
+      return (
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      );
+    }
+
+    if (ratingComments.length === 0) {
+      return (
+        <div className="text-center py-12 text-slate-400">
+          <MessageSquare size={48} className="mx-auto mb-4 opacity-20" />
+          <p>No hay comentarios para esta calificación</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        {ratingComments.map((comment, idx) => (
+          <div key={comment.id || idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <span className={`px-2 py-0.5 rounded text-xs font-bold ${getRatingStyles(comment.rating)}`}>
+                {getRatingLabel(comment.rating)}
+              </span>
+              <span className="text-xs text-slate-400">
+                {new Date(comment.createdAt).toLocaleDateString('es', { 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+            {comment.comment ? (
+              <p className="text-sm text-slate-700 leading-relaxed italic">
+                "{comment.comment}"
+              </p>
+            ) : (
+              <p className="text-sm text-slate-400 italic">Sin comentario adicional</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Spinner size="lg" /></div>;
@@ -66,7 +144,6 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500 pb-10">
       
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-200/60 pb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Panel de Control</h1>
@@ -82,7 +159,6 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Agentes Online', value: connectedAgents.length, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
@@ -106,7 +182,6 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Satisfaction Bars */}
         <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-full">
           <div className="mb-8">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2.5">
@@ -120,15 +195,20 @@ export default function DashboardPage() {
           
           <div className="space-y-7 flex-1 justify-center flex flex-col">
             {[
-              { label: 'Excelente', count: counts.EXCELENTE, pct: percentages.EXCELENTE, color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' },
-              { label: 'Regular', count: counts.REGULAR, pct: percentages.REGULAR, color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700' },
-              { label: 'Mala', count: counts.MALA, pct: percentages.MALA, color: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-700' },
+              { label: 'Excelente', rating: 'EXCELENTE', count: counts.EXCELENTE, pct: percentages.EXCELENTE, color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+              { label: 'Regular', rating: 'REGULAR', count: counts.REGULAR, pct: percentages.REGULAR, color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700' },
+              { label: 'Mala', rating: 'MALA', count: counts.MALA, pct: percentages.MALA, color: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-700' },
             ].map((item) => (
                <div key={item.label} className="space-y-2.5">
                   <div className="flex justify-between text-sm items-end">
-                    <span className={`font-bold ${item.text} flex items-center gap-2`}>
+                    <button
+                      onClick={() => handleViewComments(item.rating)}
+                      disabled={!item.count}
+                      className={`font-bold ${item.text} flex items-center gap-2 hover:underline disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
                       {item.label}
-                    </span>
+                      {item.count > 0 && <MessageSquare size={14} />}
+                    </button>
                     <div className="text-right leading-none">
                       <span className="text-slate-800 font-bold text-base block">{item.count || 0}</span>
                       <span className="text-slate-400 text-[10px] font-medium">{Number(item.pct || 0).toFixed(0)}% del total</span>
@@ -142,7 +222,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Weekly Trend Chart */}
         <div className="lg:col-span-2 bg-white p-7 rounded-2xl border border-slate-100 shadow-sm flex flex-col h-full">
            <div className="mb-6 flex justify-between items-start">
              <div>
@@ -157,7 +236,6 @@ export default function DashboardPage() {
            </div>
 
            <div className="flex-1 flex items-end justify-between gap-4 pt-4 px-2 min-h-[240px] border-b border-dashed border-slate-200 relative">
-             {/* Background grid lines effect */}
              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-30">
                  <div className="border-t border-slate-100 w-full h-px"></div>
                  <div className="border-t border-slate-100 w-full h-px"></div>
@@ -175,7 +253,6 @@ export default function DashboardPage() {
 
                  return (
                     <div key={day.date} className="flex flex-col items-center gap-3 flex-1 h-full justify-end group cursor-pointer z-10">
-                       {/* Tooltip on hover */}
                        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute mb-2 bottom-full bg-slate-800 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap pointer-events-none z-20">
                           Total: {total} (Exc: {exc}, Reg: {reg}, Mal: {bad})
                        </div>
@@ -195,7 +272,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* NUEVA SECCION: Comentarios Recientes (si analytics esta disponible) */}
       {analytics?.comments && analytics.comments.length > 0 && (
         <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-sm">
           <div className="mb-6">
@@ -213,7 +289,6 @@ export default function DashboardPage() {
               <div key={comment.id || idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
-                    {/* Correccion aplicada aqui: uso de funcion helper */}
                     <span className={`px-2 py-0.5 rounded text-xs font-bold ${getRatingStyles(comment.rating)}`}>
                       {comment.rating}
                     </span>
@@ -232,6 +307,23 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={showCommentsModal}
+        onClose={() => setShowCommentsModal(false)}
+        title={`Comentarios - ${selectedRating ? getRatingLabel(selectedRating) : ''}`}
+        size="lg"
+      >
+        {renderModalContent()}
+        <Modal.Footer>
+          <button 
+            onClick={() => setShowCommentsModal(false)}
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            Cerrar
+          </button>
+        </Modal.Footer>
+      </Modal>
       
     </div>
   );
