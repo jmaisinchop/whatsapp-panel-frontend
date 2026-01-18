@@ -8,7 +8,7 @@ import Modal from '../components/Modal';
 import api from '../services/api';
 import {
   Search, Paperclip, Send, MoreVertical, ChevronUp,
-  MessageSquare, Check, CheckCheck, FileText, ChevronLeft, StickyNote, X
+  MessageSquare, Check, CheckCheck, FileText, ChevronLeft, StickyNote, X, Image, Video, Music, File
 } from 'lucide-react';
 
 export default function ChatsPage() {
@@ -153,6 +153,82 @@ export default function ChatsPage() {
     return `${baseClass} ${isActive ? activeClass : inactiveClass}`;
   };
 
+  const getLastMessagePreview = (chat) => {
+    if (!chat.messages || !Array.isArray(chat.messages) || chat.messages.length === 0) {
+      return 'Sin mensajes';
+    }
+
+    const lastMessage = chat.messages[chat.messages.length - 1];
+
+    if (!lastMessage) {
+      return 'Sin mensajes';
+    }
+
+    if (lastMessage.mediaUrl && lastMessage.mimeType) {
+      const mimeType = lastMessage.mimeType.toLowerCase();
+
+      if (mimeType.startsWith('image/')) {
+        return '📷 Imagen';
+      }
+      if (mimeType.startsWith('video/')) {
+        return '🎥 Video';
+      }
+      if (mimeType.startsWith('audio/')) {
+        return '🎵 Audio';
+      }
+      if (mimeType === 'application/pdf') {
+        return '📄 PDF';
+      }
+      return '📎 Archivo';
+    }
+
+    return lastMessage.content || 'Mensaje sin contenido';
+  };
+
+  const getMediaIcon = (mimeType) => {
+    if (!mimeType) return FileText;
+
+    const type = mimeType.toLowerCase();
+    if (type.startsWith('image/')) return Image;
+    if (type.startsWith('video/')) return Video;
+    if (type.startsWith('audio/')) return Music;
+    return File;
+  };
+
+  const renderMediaPreview = (msg) => {
+    if (!msg.mediaUrl) return null;
+
+    const MediaIcon = getMediaIcon(msg.mimeType);
+
+    if (msg.mimeType?.startsWith('image/')) {
+      return (
+        <div className="mb-2 mt-1 -mx-1">
+          <img
+            src={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`}
+            alt="Media"
+            className="rounded-lg max-h-64 object-cover cursor-pointer hover:brightness-95 transition-all shadow-sm"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="mb-2 mt-1 -mx-1">
+        <a
+          href={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 p-3 rounded-lg bg-black/5 hover:bg-black/10 transition-colors"
+        >
+          <div className="bg-white p-2 rounded-md shadow-sm">
+            <MediaIcon size={20} className="text-blue-500" />
+          </div>
+          <span className="font-medium underline decoration-slate-400">Ver archivo adjunto</span>
+        </a>
+      </div>
+    );
+  };
+
   const renderChatList = () => {
     if (loading && !chats.length) {
       return <div className="p-8 flex justify-center"><Spinner size="md" /></div>;
@@ -196,7 +272,7 @@ export default function ChatsPage() {
           </div>
           <div className="flex justify-between items-center gap-2">
             <p className={`text-xs truncate flex-1 ${chat.unreadCount > 0 ? 'font-semibold text-slate-700' : 'text-slate-500'}`}>
-              {chat.messages?.[chat.messages.length - 1]?.content || '📎 Archivo adjunto'}
+              {getLastMessagePreview(chat)}
             </p>
             <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide font-bold ${getStatusColor(chat.status)}`}>
               {getStatusLabel(chat.status)}
@@ -345,30 +421,9 @@ export default function ChatsPage() {
                         </span>
                       )}
 
-                      {msg.mediaUrl && (
-                        <div className="mb-2 mt-1 -mx-1">
-                          {msg.mimeType?.startsWith('image/') ? (
-                            <img
-                              src={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`}
-                              alt="Media"
-                              className="rounded-lg max-h-64 object-cover cursor-pointer hover:brightness-95 transition-all shadow-sm"
-                            />
-                          ) : (
-                            <a
-                              href={`${import.meta.env.VITE_API_URL}${msg.mediaUrl}`}
-                              target="_blank" rel="noopener noreferrer"
-                              className="flex items-center gap-3 p-3 rounded-lg bg-black/5 hover:bg-black/10 transition-colors"
-                            >
-                              <div className="bg-white p-2 rounded-md shadow-sm">
-                                <FileText size={20} className="text-blue-500" />
-                              </div>
-                              <span className="font-medium underline decoration-slate-400">Ver archivo adjunto</span>
-                            </a>
-                          )}
-                        </div>
-                      )}
+                      {renderMediaPreview(msg)}
 
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
 
                       <div className="flex items-center justify-end gap-1 mt-1 opacity-60 select-none">
                         <span className="text-[9px]">{formatTime(msg.timestamp)}</span>

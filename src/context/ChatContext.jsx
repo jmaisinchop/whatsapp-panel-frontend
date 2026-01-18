@@ -1,5 +1,3 @@
-// src/context/ChatContext.jsx - VERSIÓN LIMPIA
-
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useSocket, SOCKET_EVENTS } from './SocketContext';
@@ -56,6 +54,7 @@ export function ChatProvider({ children }) {
         ...updated[index],
         updatedAt: new Date().toISOString(),
         unreadCount: isCurrentChat ? 0 : (updated[index].unreadCount || 0) + 1,
+        messages: [message],
       };
 
       const [chat] = updated.splice(index, 1);
@@ -64,9 +63,28 @@ export function ChatProvider({ children }) {
   }, []);
 
   const handleNewChat = useCallback((chat) => {
-    setChats(prev => [chat, ...prev]);
-    info(`Nuevo chat de ${chat.customerName || chat.contactNumber}`);
-  }, [info]);
+    setChats(prev => {
+      const existingIndex = prev.findIndex(c => c.id === chat.id);
+      
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          ...chat,
+        };
+        const [updatedChat] = updated.splice(existingIndex, 1);
+        return [updatedChat, ...updated];
+      }
+      
+      return [chat, ...prev];
+    });
+    
+    const isNewChat = !chats.some(c => c.id === chat.id);
+    
+    if (isNewChat) {
+      info(`Nuevo chat de ${chat.customerName || chat.contactNumber}`);
+    }
+  }, [info, chats]);
 
   const handleChatUpdate = useCallback((chat) => {
     setChats(prev => prev.map(c => c.id === chat.id ? chat : c));
@@ -137,10 +155,22 @@ export function ChatProvider({ children }) {
       const chat = await api.getChat(chatId);
       const messagesResponse = await api.getChatMessages(chatId, 1, 50);
       
-      setCurrentChat({
+      const chatWithMessages = {
         ...chat,
         messages: messagesResponse.data || [],
-      });
+      };
+      
+      setCurrentChat(chatWithMessages);
+
+      setChats(prev => prev.map(c => 
+        c.id === chatId 
+          ? { 
+              ...c, 
+              ...chat,
+              messages: messagesResponse.data?.slice(-1) || [] 
+            }
+          : c
+      ));
 
       setMessagesPagination({
         page: messagesResponse.meta.page,
@@ -285,9 +315,9 @@ export function ChatProvider({ children }) {
 
   useEffect(() => {
     if (isConnected) {
-      loadChatsCallback(pagination.page, pagination.limit);
+      loadChatsCallback(1, 50);
     }
-  }, [isConnected, loadChatsCallback, pagination.page, pagination.limit]);
+  }, [isConnected]);
 
   const value = useMemo(() => ({
     chats,
